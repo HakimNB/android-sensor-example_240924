@@ -26,6 +26,8 @@ public class MainActivity extends GameActivity implements SensorEventListener {
         System.loadLibrary("sensorchangecallback");
     }
 
+    public static MainActivity instance = null;
+
     private SensorManager mSensorManager;
     private Sensor mHingeSensor;
 
@@ -36,6 +38,7 @@ public class MainActivity extends GameActivity implements SensorEventListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        MainActivity.instance = this;
         mWindowInfoTracker = new WindowInfoTrackerCallbackAdapter(WindowInfoTracker.getOrCreate(this));
     }
     
@@ -86,16 +89,27 @@ public class MainActivity extends GameActivity implements SensorEventListener {
         );
     }
 
+    private long mSensorLastTimestamp = 0;
+    private String mSensorLastValues = "UNDEF";
+    private String mFeatureLastState = "UNDEF";
+    private String mFeatureLastOrientation = "UNDEF";
+
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
-        String debug = "MainActivity.onSensorChanged: " +
-                " ts: " + sensorEvent.timestamp +
-                " acc: " + sensorEvent.accuracy +
-                " first: " + sensorEvent.firstEventAfterDiscontinuity +
-                " name: " + sensorEvent.sensor.getName() +
-                " values: " + Arrays.toString(sensorEvent.values);
-        Log.d("MainActivity", debug);
-        Toast.makeText(this, debug, Toast.LENGTH_SHORT).show();
+        if ( sensorEvent.sensor.getType() == Sensor.TYPE_HINGE_ANGLE ) {
+            String sensorValues = Arrays.toString(sensorEvent.values);
+            String debug = "MainActivity.onSensorChanged:" +
+                    " ts: " + sensorEvent.timestamp +
+                    " type: " + sensorEvent.sensor.getType() +
+                    " acc: " + sensorEvent.accuracy +
+                    " first: " + sensorEvent.firstEventAfterDiscontinuity +
+                    " name: " + sensorEvent.sensor.getName() +
+                    " values: " + sensorValues;
+            Log.d("MainActivity", debug);
+
+            mSensorLastTimestamp = sensorEvent.timestamp;
+            mSensorLastValues = sensorValues;
+        }
 
         // Device
         // 2024-09-24 14:45:46.959 29183-29183 MainActivity            com...gameloft.sensorchangecallback  D  MainActivity.onAccuracyChanged: {Sensor name="Hinge Angle (wake-up)", vendor="Google", version=1, type=36, maxRange=180.0, resolution=5.0, power=0.001, minDelay=0} i = 3
@@ -130,11 +144,41 @@ public class MainActivity extends GameActivity implements SensorEventListener {
                 for ( final DisplayFeature d : displayFeatures ) {
                     if ( d instanceof FoldingFeature ) {
                         FoldingFeature f = (FoldingFeature) d;
-                        Log.d("MainActivity", "MainActivity.FoldingFeature state: " + f.getState() +
-                                " occlusion: " + f.getOcclusionType() +
-                                " orientation: " + f.getOrientation() +
-                                " separating: " + f.isSeparating()
-                        );
+                        String debug = "MainActivity.FoldingFeature:" +
+                            " state: " + f.getState() +
+                            " occlusion: " + f.getOcclusionType() +
+                            " orientation: " + f.getOrientation() +
+                            " separating: " + f.isSeparating() +
+                            " bounds: " + f.getBounds().toString();
+                        Log.d("MainActivity", debug);
+
+                        String szFeatureState = f.getState().toString();
+                        String szFeatureOrientation = f.getOrientation().toString();
+                        boolean bEqualState = szFeatureState.equalsIgnoreCase(mFeatureLastState);
+                        boolean bEqualOrientation = szFeatureOrientation.equalsIgnoreCase(mFeatureLastOrientation);
+                        if ( !(bEqualState && bEqualOrientation) ) {
+                            StringBuffer sbDebug = new StringBuffer();
+                            if ( !bEqualState ) {
+                                sbDebug.append(mFeatureLastState);
+                                sbDebug.append(" => ");
+                                sbDebug.append(szFeatureState);
+                                sbDebug.append(" : ");
+                            }
+                            if ( !bEqualOrientation ) {
+                                sbDebug.append(mFeatureLastOrientation);
+                                sbDebug.append(" => ");
+                                sbDebug.append(szFeatureOrientation);
+                                sbDebug.append(" : ");
+                            }
+                            sbDebug.append(mSensorLastValues);
+
+                            mFeatureLastState = szFeatureState;
+                            mFeatureLastOrientation = szFeatureOrientation;
+                            Log.d("MainActivity", "MainActivity.FoldingFeature CHANGES: " + sbDebug.toString());
+                            Toast.makeText(MainActivity.instance, sbDebug.toString(), Toast.LENGTH_SHORT).show();
+                        }
+                        //Toast.makeText(MainActivity.instance, debug, Toast.LENGTH_SHORT).show();
+                        // MainActivity.FoldingFeature state: FLAT occlusion: NONE orientation: VERTICAL separating: false
                     }
                 }
             });
