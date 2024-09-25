@@ -6,6 +6,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.androidgamesdk.GameActivity;
 
@@ -61,13 +62,14 @@ public class MainActivity extends GameActivity implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
-        Log.d("MainActivity", "MainActivity.onSensorChanged: " + sensorEvent.toString() +
-                " timestamp: " + sensorEvent.timestamp +
-                " accuracy: " + sensorEvent.accuracy +
-                " firstEventAfterDiscontinuity: " + sensorEvent.firstEventAfterDiscontinuity +
-                " sensor: " + sensorEvent.sensor.getName() +
-                " values: " + Arrays.toString(sensorEvent.values)
-        );
+        String debug = "MainActivity.onSensorChanged: " +
+                " ts: " + sensorEvent.timestamp +
+                " acc: " + sensorEvent.accuracy +
+                " first: " + sensorEvent.firstEventAfterDiscontinuity +
+                " name: " + sensorEvent.sensor.getName() +
+                " values: " + Arrays.toString(sensorEvent.values);
+        Log.d("MainActivity", debug);
+        Toast.makeText(this, debug, Toast.LENGTH_SHORT).show();
 
         // Device
         // 2024-09-24 14:45:46.959 29183-29183 MainActivity            com...gameloft.sensorchangecallback  D  MainActivity.onAccuracyChanged: {Sensor name="Hinge Angle (wake-up)", vendor="Google", version=1, type=36, maxRange=180.0, resolution=5.0, power=0.001, minDelay=0} i = 3
