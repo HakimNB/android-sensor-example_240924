@@ -4,9 +4,17 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
+
+import androidx.core.util.Consumer;
+import androidx.window.java.layout.WindowInfoTrackerCallbackAdapter;
+import androidx.window.layout.DisplayFeature;
+import androidx.window.layout.FoldingFeature;
+import androidx.window.layout.WindowInfoTracker;
+import androidx.window.layout.WindowLayoutInfo;
 
 import com.google.androidgamesdk.GameActivity;
 
@@ -21,6 +29,16 @@ public class MainActivity extends GameActivity implements SensorEventListener {
     private SensorManager mSensorManager;
     private Sensor mHingeSensor;
 
+    private WindowInfoTrackerCallbackAdapter mWindowInfoTracker;
+    private final LayoutStateChangeCallback mLayoutStateChangeCallback = new LayoutStateChangeCallback();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        mWindowInfoTracker = new WindowInfoTrackerCallbackAdapter(WindowInfoTracker.getOrCreate(this));
+    }
+    
     @Override
     protected void onStart() {
         super.onStart();
@@ -31,12 +49,20 @@ public class MainActivity extends GameActivity implements SensorEventListener {
         for(final Sensor s: allSensor) {
             Log.d("MainActivity", "MainActivity.sensor: " + s.getName());
         }
+
+        mWindowInfoTracker.addWindowLayoutInfoListener(this, Runnable::run, mLayoutStateChangeCallback);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         mSensorManager.registerListener(this, mHingeSensor, SensorManager.SENSOR_DELAY_GAME);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mWindowInfoTracker.removeWindowLayoutInfoListener(mLayoutStateChangeCallback);
     }
 
     @Override
@@ -92,5 +118,26 @@ public class MainActivity extends GameActivity implements SensorEventListener {
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {
         Log.d("MainActivity", "MainActivity.onAccuracyChanged: " + sensor.toString() + " i = " + i);
+    }
+
+    class LayoutStateChangeCallback implements Consumer<WindowLayoutInfo> {
+        @Override
+        public void accept(WindowLayoutInfo newLayoutInfo) {
+            MainActivity.this.runOnUiThread( () -> {
+                // Use newLayoutInfo to update the layout.
+                List<DisplayFeature> displayFeatures = newLayoutInfo.getDisplayFeatures();
+                Log.d("MainActivity", "MainActivity.WindowLayoutInfo: " + newLayoutInfo.toString());
+                for ( final DisplayFeature d : displayFeatures ) {
+                    if ( d instanceof FoldingFeature ) {
+                        FoldingFeature f = (FoldingFeature) d;
+                        Log.d("MainActivity", "MainActivity.FoldingFeature state: " + f.getState() +
+                                " occlusion: " + f.getOcclusionType() +
+                                " orientation: " + f.getOrientation() +
+                                " separating: " + f.isSeparating()
+                        );
+                    }
+                }
+            });
+        }
     }
 }
